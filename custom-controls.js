@@ -272,10 +272,11 @@
         on(state, state.root, 'mousemove', () => showControls(state));
         on(state, state.root, 'mouseenter', () => showControls(state));
         on(state, state.root, 'mouseleave', () => scheduleHide(state));
-        on(state, state.video, 'play', () => updatePlay(state));
-        on(state, state.video, 'pause', () => updatePlay(state));
+        on(state, state.video, 'play', () => { updatePlay(state); showToast(state, 'Play'); });
+        on(state, state.video, 'pause', () => { updatePlay(state); showToast(state, 'Pause'); });
         on(state, state.video, 'timeupdate', () => updateProgress(state));
         on(state, state.video, 'durationchange', () => updateProgress(state));
+        on(state, state.video, 'seeked', () => onSeeked(state));
         on(state, state.video, 'progress', () => updateBuffer(state));
         on(state, state.video, 'volumechange', () => updateVolume(state));
         on(state, state.video, 'ratechange', () => updateSpeedMenu(state));
@@ -319,7 +320,7 @@
     }
 
     function handleKeyboard(state, event) {
-        if (!state.root || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+        if (!state.root || event.ctrlKey || event.metaKey || event.altKey) return;
         if (isEditable(event.target)) return;
         if (!isWatchPage()) return;
 
@@ -330,12 +331,6 @@
         event.preventDefault();
         showControls(state);
 
-        if (key === ' ' || key === 'k') togglePlay(state);
-        if (key === 'arrowleft') seekBy(state, -SEEK_STEP);
-        if (key === 'arrowright') seekBy(state, SEEK_STEP);
-        if (key === 'arrowup') adjustVolume(state, VOLUME_STEP);
-        if (key === 'arrowdown') adjustVolume(state, -VOLUME_STEP);
-        if (key === 'm') toggleMute(state);
         if (key === 'f') toggleFullscreen(state);
         if (key === 'escape') hideControls(state);
     }
@@ -414,11 +409,6 @@
         }
         setProgressUi(state, next, state.video.duration);
         showToast(state, seconds < 0 ? `-${Math.abs(seconds)}s` : `+${seconds}s`);
-        setTimeout(() => {
-            if (state.video && Math.abs(state.video.currentTime - next) > 0.5) {
-                state.video.currentTime = next;
-            }
-        }, 0);
     }
 
     function pointToPct(state, clientX) {
