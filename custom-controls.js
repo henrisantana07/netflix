@@ -330,8 +330,8 @@
         showControls(state);
 
         if (key === ' ' || key === 'k') togglePlay(state);
-        if (key === 'arrowleft') seekBy(state, -SEEK_STEP);
-        if (key === 'arrowright') seekBy(state, SEEK_STEP);
+        if (key === 'arrowleft') { event.stopImmediatePropagation(); seekBy(state, -SEEK_STEP); }
+        if (key === 'arrowright') { event.stopImmediatePropagation(); seekBy(state, SEEK_STEP); }
         if (key === 'arrowup') adjustVolume(state, VOLUME_STEP);
         if (key === 'arrowdown') adjustVolume(state, -VOLUME_STEP);
         if (key === 'm') toggleMute(state);
@@ -342,6 +342,7 @@
     function handleProgressKeyboard(state, event) {
         if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
         event.preventDefault();
+        event.stopImmediatePropagation();
         seekBy(state, event.key === 'ArrowLeft' ? -SEEK_STEP : SEEK_STEP);
     }
 
