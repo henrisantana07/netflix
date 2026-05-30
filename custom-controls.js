@@ -35,6 +35,7 @@
         next: icon('M6 18l8.5-6L6 6v12zm10-12h2v12h-2V6z'),
         episodes: icon('M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM10 7h8v2h-8V7zm0 3h8v2h-8v-2zm0 3h5v2h-5v-2z'),
         subtitles: icon('M21 4H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM9 11H4V9h5v2zm7 0h-5V9h5v2zm4 4H4v-2h16v2z'),
+        subtitlesOff: `<svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path d="M21 4H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H3V6h18v12zM9 11H4V9h5v2zm7 0h-5V9h5v2zm4 4H4v-2h16v2z"/><path d="M2 22L22 2" stroke="currentColor" stroke-width="2" fill="none"/></svg>`,
         speed: icon('M12 3a9 9 0 0 0-9 9h2a7 7 0 1 1 11.95 4.95l1.41 1.41A9 9 0 0 0 12 3zm.5 4H11v6l5.25 3.15.75-1.23-4.5-2.67V7z'),
         pip: icon('M19 7h-8v6h8V7zm2-4H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z'),
         fullscreenEnter: icon('M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z'),
@@ -308,7 +309,7 @@
             next: () => nextEpisode(state),
             nextPrompt: () => nextEpisode(state),
             episodes: () => openEpisodesPanel(state),
-            audio: () => triggerNativeControl('audio'),
+            audio: () => toggleSubtitles(state),
             speed: () => toggleSpeedMenu(state),
             pip: () => togglePip(state),
             fullscreen: () => toggleFullscreen(state)
@@ -330,8 +331,8 @@
         showControls(state);
 
         if (key === ' ' || key === 'k') togglePlay(state);
-        if (key === 'arrowleft') { event.stopImmediatePropagation(); seekBy(state, -SEEK_STEP); }
-        if (key === 'arrowright') { event.stopImmediatePropagation(); seekBy(state, SEEK_STEP); }
+        if (key === 'arrowleft') seekBy(state, -SEEK_STEP);
+        if (key === 'arrowright') seekBy(state, SEEK_STEP);
         if (key === 'arrowup') adjustVolume(state, VOLUME_STEP);
         if (key === 'arrowdown') adjustVolume(state, -VOLUME_STEP);
         if (key === 'm') toggleMute(state);
@@ -413,6 +414,11 @@
         }
         setProgressUi(state, next, state.video.duration);
         showToast(state, seconds < 0 ? `-${Math.abs(seconds)}s` : `+${seconds}s`);
+        setTimeout(() => {
+            if (state.video && Math.abs(state.video.currentTime - next) > 0.5) {
+                state.video.currentTime = next;
+            }
+        }, 0);
     }
 
     function pointToPct(state, clientX) {
@@ -518,6 +524,21 @@
         if (!state.video.muted && state.video.volume === 0) state.video.volume = 0.5;
         showToast(state, state.video.muted ? 'Mudo' : `Volume ${Math.round(state.video.volume * 100)}%`);
         updateVolume(state);
+    }
+
+    let subtitlesHidden = false;
+
+    function toggleSubtitles(state) {
+        subtitlesHidden = !subtitlesHidden;
+        const timedtext = document.querySelector('.player-timedtext');
+        if (timedtext) {
+            timedtext.style.display = subtitlesHidden ? 'none' : '';
+        }
+        const button = state.root.querySelector('[data-action="audio"]');
+        if (button) {
+            button.innerHTML = subtitlesHidden ? Icons.subtitlesOff : Icons.subtitles;
+        }
+        showToast(state, subtitlesHidden ? 'Legendas off' : 'Legendas on');
     }
 
     function toggleSpeedMenu(state) {
@@ -646,7 +667,7 @@
 
         const audioButton = state.root.querySelector('[data-action="audio"]');
         if (audioButton && !findNativeControl('audio')) {
-            audioButton.innerHTML = Icons.subtitles;
+            audioButton.innerHTML = subtitlesHidden ? Icons.subtitlesOff : Icons.subtitles;
         }
     }
 
@@ -669,7 +690,7 @@
     }
 
     function copyNativeIcon(button, native) {
-        if (button.dataset.action === 'play' || button.dataset.action === 'mute' || button.dataset.action === 'fullscreen') return;
+        if (button.dataset.action === 'play' || button.dataset.action === 'mute' || button.dataset.action === 'fullscreen' || button.dataset.action === 'audio') return;
 
         const nativeSvg = native.querySelector('svg');
         if (!nativeSvg) return;
